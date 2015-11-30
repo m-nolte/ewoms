@@ -119,6 +119,18 @@ NEW_PROP_TAG(ConvergenceWriter);
  */
 NEW_PROP_TAG(NewtonRawTolerance);
 
+/*!
+ * \brief Eisenstat Walker stopping criteria linear solver inside Newton method
+ * See:
+ * Eisenstat, S.C. and Walker, H.F.
+ * Choosing the Forcing Terms in an Inexact Newton Method
+ * SIAM J. Sci. Comput. 17, 1994.
+ */
+NEW_PROP_TAG(NewtonUseEisenstatWalker);
+NEW_PROP_TAG(NewtonEisenstatWalkerEtaMax); // \eta_max \in (0,1)
+NEW_PROP_TAG(NewtonEisenstatWalkerAlpha);  // \alpha   \in (1,2]
+NEW_PROP_TAG(NewtonEisenstatWalkerGamma);  // \gamma   \in (0,1)
+
 //! The maximum error which may occur in a simulation before the
 //! Newton method for the time step is aborted
 NEW_PROP_TAG(NewtonMaxError);
@@ -142,6 +154,18 @@ SET_TYPE_PROP(NewtonMethod, NewtonConvergenceWriter, Ewoms::NullConvergenceWrite
 SET_BOOL_PROP(NewtonMethod, NewtonWriteConvergence, false);
 SET_BOOL_PROP(NewtonMethod, NewtonVerbose, true);
 SET_SCALAR_PROP(NewtonMethod, NewtonRawTolerance, 1e-8);
+
+// Eisenstat Walker stopping criteria linear solver inside Newton method
+// See:
+// Eisenstat, S.C. and Walker, H.F.
+// Choosing the Forcing Terms in an Inexact Newton Method
+// SIAM J. Sci. Comput. 17, 1994.
+SET_BOOL_PROP(NewtonMethod,   NewtonUseEisenstatWalker, false);
+SET_SCALAR_PROP(NewtonMethod, NewtonEisenstatWalkerEtaMax,0.1); // \eta_max \in (0,1)
+SET_SCALAR_PROP(NewtonMethod, NewtonEisenstatWalkerAlpha, 1.5); // \alpha   \in (1,2]
+SET_SCALAR_PROP(NewtonMethod, NewtonEisenstatWalkerGamma, 0.1); // \gamma   \in (0,1)
+
+
 // set the abortion tolerace to some very large value. if not
 // overwritten at run-time this basically disables abortions
 SET_SCALAR_PROP(NewtonMethod, NewtonMaxError, 1e100);
@@ -182,12 +206,14 @@ class NewtonMethod
 public:
     NewtonMethod(Simulator &simulator)
         : simulator_(simulator), endIterMsgStream_(std::ostringstream::out),
+          useEisenstatWalker_( EWOMS_GET_PARAM(TypeTag, bool, NewtonUseEisenstatWalker) ),
           linearSolver_(simulator), comm_(Dune::MPIHelper::getCommunicator()),
           convergenceWriter_(asImp_())
     {
         lastError_ = 1e100;
         error_ = 1e100;
         tolerance_ = EWOMS_GET_PARAM(TypeTag, Scalar, NewtonRawTolerance);
+        linearSolverResidualReduction_ = -1.0;// disabled
 
         numIterations_ = 0;
     }
@@ -218,6 +244,14 @@ public:
         EWOMS_REGISTER_PARAM(TypeTag, Scalar, NewtonMaxError,
                              "The maximum error tolerated by the Newton "
                              "method to which does not cause an abort");
+        EWOMS_REGISTER_PARAM(TypeTag, bool, NewtonUseEisenstatWalker,
+                             "True if Eisenstat-Walker criterium for stopping of linear solver should be used");
+        EWOMS_REGISTER_PARAM(TypeTag, Scalar, NewtonEisenstatWalkerEtaMax,
+                             "Eisenstat-Walker: eta_max in (0,1)");
+        EWOMS_REGISTER_PARAM(TypeTag, Scalar, NewtonEisenstatWalkerAlpha,
+                             "Eisenstat-Walker: alpha in (1,2]");
+        EWOMS_REGISTER_PARAM(TypeTag, Scalar, NewtonEisenstatWalkerGamma,
+                             "Eisenstat-Walker: gamma in (0,1)");
     }
 
     /*!
@@ -250,6 +284,21 @@ public:
      */
     const Model &model() const
     { return simulator_.model(); }
+
+    /*!
+     * \brief Returns true if Eisenstat-Walker is used
+     */
+    bool useEisenstatWalker() const
+    { return useEisenstatWalker_; }
+
+    /*!
+     * \brief Returns linearSolverResidualReduction (if Eisenstat-Walker enabled)
+     */
+    Scalar linearSolverResidualReduction() const
+    {
+        assert( useEisenstatWalker() );
+        return linearSolverResidualReduction_;
+    }
 
     /*!
      * \brief Returns the number of iterations done since the Newton method
@@ -541,6 +590,28 @@ protected:
     void beginIteration_()
     {
         problem().beginIteration();
+        // Eisenstat Walker stopping criteria linear solver inside Newton method
+        // See:
+        // Eisenstat, S.C. and Walker, H.F.
+        // Choosing the Forcing Terms in an Inexact Newton Method
+        // SIAM J. Sci. Comput. 17, 1994.
+        if( useEisenstatWalker_ )
+        {
+            const Scalar etaMax = EWOMS_GET_PARAM(TypeTag, Scalar, NewtonEisenstatWalkerEtaMax); // \eta_max \in (0,1)
+            const Scalar alpha  = EWOMS_GET_PARAM(TypeTag, Scalar, NewtonEisenstatWalkerAlpha);  // \alpha \in (1,2]
+            const Scalar gamma  = EWOMS_GET_PARAM(TypeTag, Scalar, NewtonEisenstatWalkerGamma);  // \gamma \in [0,1]
+            linearSolverResidualReduction_ = etaMax;
+            if( numIterations_ > 0 )
+            {
+                linearSolverResidualReduction_ = std::min( etaMax, (gamma * std::pow( error_ / lastError_, alpha ) ) );
+                if( gamma * std::pow( lastError_, alpha ) > 0.1 )
+                {
+                    linearSolverResidualReduction_ = std::min( etaMax,
+                                                               std::max( linearSolverResidualReduction_, gamma * ( lastError_ * lastError_ ) ) );
+                }
+            }
+        }
+
         lastError_ = error_;
     }
 
@@ -766,6 +837,8 @@ protected:
     Scalar error_;
     Scalar lastError_;
     Scalar tolerance_;
+    Scalar linearSolverResidualReduction_;
+    const bool useEisenstatWalker_;
 
     // actual number of iterations done so far
     int numIterations_;

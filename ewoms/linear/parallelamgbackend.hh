@@ -225,7 +225,9 @@ public:
             std::cout << "Creating the solver\n" << std::flush;
 
         typedef Ewoms::BiCGSTABSolver<Vector> SolverType;
-        Scalar linearSolverTolerance = EWOMS_GET_PARAM(TypeTag, Scalar, LinearSolverTolerance);
+        Scalar linearSolverTolerance = simulator_.model().newtonMethod().useEisenstatWalker() ?
+                simulator_.model().newtonMethod().linearSolverResidualReduction() :
+                EWOMS_GET_PARAM(TypeTag, Scalar, LinearSolverTolerance);
         int maxIterations = EWOMS_GET_PARAM(TypeTag, int, LinearSolverMaxIterations);
         SolverType solver(fineOperator,
                           scalarProduct,

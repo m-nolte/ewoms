@@ -309,7 +309,9 @@ public:
             }
         }
 
-        Scalar linearSolverTolerance = EWOMS_GET_PARAM(TypeTag, Scalar, LinearSolverTolerance);
+        Scalar linearSolverTolerance = simulator_.model().newtonMethod().useEisenstatWalker() ?
+                simulator_.model().newtonMethod().linearSolverResidualReduction() :
+                EWOMS_GET_PARAM(TypeTag, Scalar, LinearSolverTolerance);
         Scalar linearSolverAbsTolerance = simulator_.model().newtonMethod().tolerance() / 100.0;
         Scalar linearSolverFixPointTolerance = 100*std::numeric_limits<Scalar>::epsilon();
         typedef typename GridView::CollectiveCommunication Comm;
