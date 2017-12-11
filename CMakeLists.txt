@@ -14,6 +14,22 @@
 #                                                                         #
 ###########################################################################
 
+# specify the option that allows to select the build system. if
+# dunecontrol is used, we default to the opm build system.
+set(USE_OPM_BUILDSYSTEM_DEFAULT ON)
+
+# if dunecontrol is used switch to DUNE build system
+if (DEFINED ENV{DUNE_CONTROL_PATH})
+  set(USE_OPM_BUILDSYSTEM_DEFAULT OFF)
+endif()
+
+option(USE_OPM_BUILDSYSTEM "Use the OPM build system?" ${USE_OPM_BUILDSYSTEM_DEFAULT})
+
+if (USE_OPM_BUILDSYSTEM)
+#########################################
+# use the traditional OPM build system
+#########################################
+
 # Mandatory call to project
 project(ewoms CXX)
 
@@ -102,6 +118,17 @@ set(BUILD_TESTING "ON" CACHE BOOL "Build the tests" FORCE)
 
 # all setup common to the OPM library modules
 include (OpmLibMain)
+
+else()
+###############################################
+# use other build system provided outside OPM
+###############################################
+include(ExternalBuild)
+endif()
+
+#################################################################
+#	test programs, should be moved to CMakeLists_files.cmake
+#################################################################
 
 # restore the value of the BUILD_TESTING variable to its original
 # value. This is required because OpmLibMain thinks it is smarter
