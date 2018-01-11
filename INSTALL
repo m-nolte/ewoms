@@ -12,26 +12,27 @@ Prerequisites
 The OPM software stack -- and by extension eWoms -- is firmly target
 at the Linux platform and requires a relatively recent C++
 compiler. Thus, be aware that even though you are encouraged to try to
-build and run the software on other plattforms, your mileage may vary
+build and run the software on other platforms, your mileage may vary
 considerably in that case.
 
 In order to compile eWoms, you first need to install the following OPM
 and DUNE modules:
 
-  - opm-dune-cmake      from [3]
-  - opm-material        from [2]
   - opm-common          from [2]
+  - opm-material        from [2]
   - dune-common         from [0]
   - dune-geometry       from [0]
   - dune-grid           from [0]
   - dune-istl           from [0]
-  - dune-localfunctions from [0]
 
 To use the ECL Black-Oil Simulator (ebos), the following OPM modules
 are also required:
 
   - opm-parser         from [2]
   - opm-grid           from [2]
+
+For eWoms to provide the vertex centered finite volume schemes the DUNE module 
+dune-localfunctions is needed in addition to the other DUNE modules, available also from [0].
 
 If you want to use the latest eWoms development version, the newest
 release of the DUNE prerequisites usually works best, for the OPM
@@ -45,32 +46,8 @@ installing DUNE manually [1].
 Building
 --------
 
-The easiest way to compile eWoms is to follow the generic installation
-procedure for DUNE modules, i.e., to use the dunecontrol script [4].
-For your convenience, the eWoms source tree ships with a few
-ready-made option files for dunecontrol. These files can be found on
-the topmost level of the source tree and exhibit the '.opts'
-extension. It is advisable to adapt these to your particular needs
-before you start the build.
-
-After the prerequisites have been dealt with, you can compile eWoms
-using
-
-  cd $EWOMS_SOURCE_DIR/..
-  $PATH_TO_DUNECONTROL/dunecontrol --opts=$EWOMS_SOURCE_DIR/optim.opts --module=ewoms all
-
-Depending on the dunecontrol option file used, the test simulators are
-not compiled by default in order to speed up the build process. If you
-want to force a given test simulator to be compiled, use e.g.,
-
-  cd $EWOMS_SOURCE_DIR/build-cmake
-  make lens_immiscible_ecfv_ad
-
-to compile the `lens_immiscible_ecfv_ad` executable. Compiling all
-available tests can be achieved via
-
-  cd $EWOMS_SOURCE_DIR/build-cmake
-  make build_tests
+Build instructions for eWoms using the OPM build system are to be found on the
+OPM web page [1].
 
 Installing
 ----------
@@ -113,6 +90,40 @@ argument, e.g.,
 
   cd $EWOMS_SOURCE_DIR/build-cmake
   ./bin/lens_immiscible_ecfv_ad --help
+
+Alternative build system
+========================
+
+An experimental version making use of the DUNE build system can be found in the
+opm-dune-cmake module from [3] and is to be placed next to the OPM and DUNE
+modules.
+
+The easiest way to compile eWoms is to follow the generic installation
+procedure for DUNE modules, i.e., to use the dunecontrol script [4].
+For your convenience, the eWoms source tree ships with a few
+ready-made option files for dunecontrol. These files can be found on
+the topmost level of the source tree and exhibit the '.opts'
+extension. It is advisable to adapt these to your particular needs
+before you start the build.
+
+After the prerequisites have been dealt with, you can compile eWoms
+using
+
+  cd $EWOMS_SOURCE_DIR/..
+  $PATH_TO_DUNECONTROL/dunecontrol --opts=$EWOMS_SOURCE_DIR/optim.opts --module=ewoms all
+
+Depending on the dunecontrol option file used, the test simulators are
+not compiled by default in order to speed up the build process. If you
+want to force a given test simulator to be compiled, use e.g.,
+
+  cd $EWOMS_SOURCE_DIR/build-cmake
+  make lens_immiscible_ecfv_ad
+
+to compile the `lens_immiscible_ecfv_ad` executable. Compiling all
+available tests can be achieved via
+
+  cd $EWOMS_SOURCE_DIR/build-cmake
+  make build_tests
 
 
 Links
